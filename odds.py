@@ -1,24 +1,20 @@
-import requests
 from typing import Any
+import requests
 from odds_api import OddsAPIClient
 
 
 class OddsAPIClientWrapper:
     def __init__(
-        self, api_key: str, timeout: int | None = None, base_url: str | None = None
+        self,
+        api_key: str,
+        timeout: float | None = 10.0,
+        base_url: str | None = "https://api.odds-api.io/v3",
     ):
         self.api_key = api_key
         self.timeout = timeout
         self.base_url = base_url
 
-        # Build kwargs dynamically for arguments that are not None
-        kwargs: dict[str, Any] = {}
-        if timeout is not None:
-            kwargs["timeout"] = timeout
-        if base_url is not None:
-            kwargs["base_url"] = base_url
-
-        self.client = OddsAPIClient(api_key=api_key, **kwargs)
+        self.client = OddsAPIClient(api_key=api_key)
 
     def get_historical_events(
         self, sport: str, league: str, from_date: str, to_date: str
@@ -33,7 +29,7 @@ class OddsAPIClientWrapper:
             "to": to_date,
         }
 
-        return requests.get(url, params).json()
+        return requests.get(url, params, timeout=self.timeout).json()
 
     def get_historical_odds(
         self, sport: str, league: str, from_date: str, to_date: str
@@ -50,9 +46,10 @@ class OddsAPIClientWrapper:
         )
 
         historical_odds = []
-        for event in historical_events:
-            params["eventId"] = f"{event['id']}"
-            historical_odds.append(requests.get(url, params).json())
+        with requests.Session() as s:
+            for event in historical_events:
+                params["eventId"] = f"{event['id']}"
+                historical_odds.append(s.get(url, params, timeout=self.timeout).json())
 
         return historical_odds
 
@@ -61,7 +58,7 @@ def main():
     import dotenv
     import os
     import json
-    from datetime import datetime, timezone
+    from datetime import datetime, timezone, timedelta
 
     dotenv.load_dotenv()
     api_key = os.getenv("ODDS_API_KEY", "demo")
@@ -70,8 +67,10 @@ def main():
 
     sport = "football"
     league = "international-fifa-world-cup"
-    from_date = datetime(2026, 5, 28, 0, 0, 0, tzinfo=timezone.utc).isoformat()
-    to_date = datetime.now(timezone.utc).isoformat()
+    to_date = datetime.now(timezone.utc)
+    from_date = to_date - timedelta(days=31)
+    from_date = from_date.isoformat()
+    to_date = to_date.isoformat()
     historical_events = client.get_historical_events(
         sport=sport, league=league, from_date=from_date, to_date=to_date
     )

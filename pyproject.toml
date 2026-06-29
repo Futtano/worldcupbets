@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "dotenv>=0.9.9",
+    "mariadb>=2.0.0rc2",
     "odds-api-io>=1.0.1",
     "sqlmodel>=0.0.39",
 ]
